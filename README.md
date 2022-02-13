@@ -27,6 +27,9 @@ For every pedestrian, we generate observation sequences going from the lower bou
 <b>Models Training/Testing:</b>
 </h1>
 
+The training and testing of our methods is done on the PIE dataset. Download the PIE dataset from the link below and place it under the PIE_dataset directory:
+https://github.com/aras62/PIE
+
 We applied multiple Transformer variations for the classification task.
 
 * Encoder-only architecture with classifier on the top: TEO model.
