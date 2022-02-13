@@ -16,14 +16,14 @@ import torch
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
-
+from utils.train_utils import train, test
 from models.torch_transformer_1d import TransformerClassifier
 
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, roc_auc_score
 import json
 
 
-seed = 42
+seed = 90
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 PIE_PATH = 'PIE_dataset'
@@ -51,7 +51,7 @@ input_opts = {'num_layers' : 8,
               'batch_size': 32,
               'warmup_steps': 1000,
               'model_name' : time.strftime("%d%b%Y-%Hh%Mm%Ss"),
-              'transfer_model_name': 'Sim_Encoder_Only_13Feb2022-15h57m39s_model.pt',
+              'transfer_model_name': 'CP2A_TEO.pt',
               'pooling' : False,
               'optimizer': 'Adam',
               'tte' : data_opts['tte']
@@ -65,7 +65,7 @@ tte_seq_train, _ = tte_dataset(balanced_seq_train, data_opts['tte'], 0.6, 16)
 
 seq_valid = imdb.generate_data_trajectory_sequence('val', **data_opts)
 balanced_seq_valid = balance_dataset(seq_valid)
-tte_seq_valid, _ = tte_dataset(balanced_seq_valid,  data_opts['tte'], 0, 16)
+tte_seq_valid, _ = tte_dataset(seq_valid,  data_opts['tte'], 0, 16)
 
 
 seq_test = imdb.generate_data_trajectory_sequence('test', **data_opts)
@@ -109,21 +109,14 @@ test_loader = DataLoader(testset, batch_size = 256)
 print("Start Training Loop \n")
 epochs = 200
 
-def binary_acc(y_pred, y_test):
-    y_pred_tag = torch.round(y_pred)
-
-    correct_results_sum = (y_pred_tag == y_test).sum().float()
-    acc = correct_results_sum / y_test.shape[0]
-    
-    return acc
 
 model = TransformerClassifier(num_layers= input_opts['num_layers'], d_model=input_opts['d_model'],
                               d_input=input_opts['d_input'], num_heads=input_opts['num_heads'], 
                               dff=input_opts['dff'], maximum_position_encoding= input_opts['pos_encoding'])
 model.to(device)
 
-checkpoint_filepath_transfer = "paper_checkpoints_22/{}".format(input_opts['transfer_model_name'])
-checkpoint_trasnfer = torch.load(checkpoint_filepath_transfer)
+checkpoint_filepath_transfer = "checkpoints/{}".format(input_opts['transfer_model_name'])
+checkpoint_trasnfer = torch.load(checkpoint_filepath_transfer, map_location=device)
 model.load_state_dict(checkpoint_trasnfer['model_state_dict'])
 
 
@@ -133,114 +126,13 @@ critirion = nn.BCELoss()
 
 
 model_folder_name = 'Transfer_Encoder_Only__' + input_opts['model_name'] 
-checkpoint_filepath = "paper_checkpoints_22/{}.pt".format(model_folder_name)
-writer = SummaryWriter('torch_logs/{}'.format(model_folder_name))
+checkpoint_filepath = "checkpoints/{}.pt".format(model_folder_name)
+writer = SummaryWriter('logs/{}'.format(model_folder_name))
 
 
-def train(train_loader, valid_loader):
-    
-    best_valid_loss = np.inf
-    improvement_ratio = 0.01
-    num_steps_wo_improvement = 0
-    
-    for epoch in range(epochs):
-        nb_batches_train = len(train_loader)
-        train_acc = 0
-        model.train()
-        losses = 0.0
-
-        for x, y in train_loader:
-            x = x.to(device)
-            y = y.reshape(-1,1).to(device)
-            
-            out = model(x)  # ①
-
-            loss = critirion(out, y)  # ②
-            
-            model.zero_grad()  # ③
-
-            loss.backward()  # ④
-            losses += loss.item()
-
-            optimizer.step()  # ⑤
-                        
-            train_acc += binary_acc(y, torch.round(out))
-            
-        writer.add_scalar('training loss',
-            losses / nb_batches_train,
-            epoch + 1)
-        writer.add_scalar('training Acc',
-            train_acc / nb_batches_train,
-            epoch + 1)
-            
-        print(f"Epoch {epoch}: | Train_Loss {losses / nb_batches_train} | Train_Acc {train_acc / nb_batches_train} ")
-        valid_loss, val_acc = evaluate(valid_loader)
-        writer.add_scalar('validation loss',
-                          valid_loss,
-                          epoch + 1)
-        writer.add_scalar('validation Acc',
-                          val_acc,
-                          epoch + 1)
-        
-        if (best_valid_loss - valid_loss) > np.abs(best_valid_loss * improvement_ratio):
-            num_steps_wo_improvement = 0
-        else:
-            num_steps_wo_improvement += 1
-            
-        if num_steps_wo_improvement == 7:
-            print("Early stopping on epoch:{}".format(str(epoch)))
-            break;
-        if valid_loss <= best_valid_loss:
-            best_valid_loss = valid_loss  
-            torch.save({
-            'epoch': epoch,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'LOSS': losses / nb_batches_train,
-            }, checkpoint_filepath)
-
-def evaluate(data_loader):
-    nb_batches = len(data_loader)
-    val_losses = 0.0
-    with torch.no_grad():
-        model.eval()
-        acc = 0 
-        for x, y in data_loader:
-            x = x.to(device)
-            y = y.reshape(-1,1).to(device)
-                    
-            out = model(x)
-            val_loss = critirion(out, y)
-            val_losses += val_loss.item()
-            
-            acc += binary_acc(y, torch.round(out))
-
-    print(f"Validation_Loss {val_losses / nb_batches} | Val_Acc {acc / nb_batches} \n")
-    return val_losses / nb_batches, acc / nb_batches
-    
-    
-def test(data_loader):
-    with torch.no_grad():
-        model.eval()
-        step = 0
-        for x, y in data_loader:
-            x = x.to(device)
-            y = y.reshape(-1,1).to(device)
-                    
-            out = model(x)            
-            if(step == 0):
-                pred = out
-                labels = y
-
-            else:
-                pred = torch.cat((pred, out), 0)
-                labels = torch.cat((labels, y), 0)
-            step +=1
-
-    return pred, labels
 
 
-train(train_loader, valid_loader)
+train(model, train_loader, valid_loader, critirion, optimizer, checkpoint_filepath, writer, epochs)
 
 
 
@@ -254,7 +146,7 @@ print(checkpoint_filepath)
 model.load_state_dict(checkpoint['model_state_dict'])
 
 
-pred, lab = test(valid_loader)
+pred, lab = test(model, test_loader)
 pred_cpu = torch.Tensor.cpu(pred)
 lab_cpu = torch.Tensor.cpu(lab)
 acc = accuracy_score(lab_cpu, np.round(pred_cpu))
@@ -269,7 +161,7 @@ input_opts['auc'] = auc
 config = json.dumps(input_opts)
 
 
-f = open("paper_checkpoints_22/{}.json".format(model_folder_name),"w")
+f = open("checkpoints/{}.json".format(model_folder_name),"w")
 f.write(config)
 f.close()
 
