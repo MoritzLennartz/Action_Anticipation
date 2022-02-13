@@ -1,8 +1,10 @@
 # Action_Anticipation
 
 <h1>This repository is dedicated to the action anticipation code of the paper:
-<b>'Is attention to bounding boxes all you need for pedestrian action prediction?'</b></h1>
+<b>'Is attention to bounding boxes all you need for pedestrian action prediction?'</b>
+<p>
 https://arxiv.org/abs/2107.08031
+</p></h1>
 
 <h1>
 <b>Problem Formulation:</b>
@@ -22,7 +24,7 @@ For every pedestrian, we generate observation sequences going from the lower bou
 
 
 <h1>
-<b>Models Testing:</b>
+<b>Models Training/Testing:</b>
 </h1>
 
 We applied multiple Transformer variations for the classification task.
@@ -31,14 +33,17 @@ We applied multiple Transformer variations for the classification task.
 * Encoder-only architecture with pooling layers between the Encoder Layers and a classifier on the top: TEP model.
 * Full Transformer Encoder-Decoder model with weighted average of the regression and classification Loss: TED model.
 
-To test the pre-trained models:
 
-1- Download the models in the checkpoints repesatoire from:
+<b>For testing the pre-trained models:</b>
+
+1- Download the models from:
 https://drive.google.com/drive/folders/1FMB1ywiQ9-mT2g3YO6GrN7hOZ9bdqyUF?usp=sharing
 
-2- run the Test_TEO.py, Test_TEP.py, or Test_TED.py file according to the tested variant model.
+2- Place them in the checkpoints folder.
 
-For training the models from scratch:
+3- run the Test_TEO.py, Test_TEP.py, or Test_TED.py file according to the tested variant model.
+
+<b>For training the models from scratch:</b>
 
 1- run the TEO_experiment.py, TEP_experiment.py, or TED_experiment.py file according to the training variant model.
 
