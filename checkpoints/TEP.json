@@ -1,0 +1,1 @@
+{"num_layers": 8, "d_model": 128, "d_input": 4, "num_heads": 8, "dff": 256, "pos_encoding": 16, "batch_size": 32, "warmup_steps": 1000, "model_name": "13Feb2022-22h29m28s", "pooling": true, "optimizer": "Adam", "tte": [30, 60], "acc": 0.8856015779092702, "f1": 0.7769230769230768, "conf_matrix": "[[0.92307692 0.07692308]\n [0.22307692 0.77692308]]", "auc": 0.85}
