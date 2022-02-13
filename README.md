@@ -62,6 +62,12 @@ For more deatils about the dataset, check the following github repository:
 https://github.com/linaashaji/CP2A
 
 
+<h1>
+<b>Author</b>
+</h1>
 
+* **[Lina Achaji](https://scholar.google.com/citations?user=RMO2zJAAAAAJ&hl=en)**
+
+Please send an email to lina.achaji@stellantis.com or lina.achaji@inria.fr if there are any problems with using the data or the code.
 
 
